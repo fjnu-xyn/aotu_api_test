@@ -1,4 +1,5 @@
 from .logger import logger
+import pytest
 
 
 class Assertion:
@@ -94,3 +95,59 @@ class Assertion:
         except AssertionError as e:
             logger.error(f"JSON值断言失败: {str(e)}")
             raise
+
+    @staticmethod
+    def assert_response_code(response_json, expected_code, message="响应业务码不匹配"):
+        """断言响应体中的业务状态码"""
+        try:
+            Assertion.assert_json_key_exists(response_json, 'code')
+            actual_code = response_json['code']
+            assert actual_code == expected_code, \
+                f"{message} - 实际业务码: {actual_code}, 期望业务码: {expected_code}"
+            logger.info(f"响应业务码断言成功: {actual_code} == {expected_code}")
+            return True
+        except AssertionError as e:
+            logger.error(f"响应业务码断言失败: {str(e)}")
+            raise
+
+    @staticmethod
+    def assert_response_content(response_json, expected_response, assert_handler):
+        """
+        递归断言响应内容
+        :param response_json: 实际响应JSON
+        :param expected_response: 期望响应内容
+        :param assert_handler: 断言处理器
+        """
+        for key, expected_value in expected_response.items():
+            # 处理嵌套字典的情况
+            if isinstance(expected_value, dict):
+                # 确保键存在且值是字典
+                assert_handler.assert_json_key_exists(response_json, key)
+                actual_value = response_json[key]
+                if isinstance(actual_value, dict):
+                    # 递归处理嵌套字典
+                    Assertion.assert_response_content(actual_value, expected_value, assert_handler)
+                else:
+                    pytest.fail(f"期望键 {key} 的值是字典，但实际值是 {type(actual_value)}: {actual_value}")
+            else:
+                # 处理普通键值对
+                assert_handler.assert_json_value(response_json, key, expected_value)
+
+    @staticmethod
+    def handle_json_parsing(response, expected_http_code):
+        """
+        处理解析JSON响应的逻辑
+        :param response: HTTP响应对象
+        :param expected_http_code: 期望的HTTP状态码
+        :return: 解析后的JSON对象或None
+        """
+        try:
+            response_json = response.json()
+            return response_json
+        except Exception as e:
+            # 如果期望状态码不是2xx，且无法解析JSON，则可能是服务器错误
+            if expected_http_code < 200 or expected_http_code >= 300:
+                print(f"警告: 状态码 {response.status_code} 的响应不是有效的JSON格式")
+                return None
+            else:
+                pytest.fail(f"响应解析JSON失败: {str(e)}")
