@@ -1,0 +1,66 @@
+- case_id: 1
+  description: "正常创建用户-包含所有字段"
+  method: "POST"
+  url: "/api/users"
+  headers:
+    Content-Type: "application/json"
+  request_data:
+    username: "{{generate_username:admin}}"
+    password: "demoData"
+    email: "{{generate_email:admin}}"
+    phone: "{{generate_phone}}"
+    age: "{{generate_age:25}}"
+  expected_code: 200
+  expected_response:
+    code: 0
+    msg: "success"
+    # 移除对动态值的直接断言，或者使用特殊标记表示需要匹配请求中的值
+    # 我们将在测试代码中处理这种情况
+
+- case_id: 2
+  description: "创建用户-重复用户名（已存在）"
+  method: "POST"
+  url: "/api/users"
+  headers:
+    Content-Type: "application/json"
+  request_data:
+    username: "testuser"  # 使用固定用户名，确保重复
+    password: "demoData"
+    email: "{{generate_email:dup1}}"
+    phone: "{{generate_phone}}"
+    age: "{{generate_age:30}}"
+  expected_code: 200
+  expected_response:
+    code: 1
+    msg: "用户名已存在: testuser"
+
+- case_id: 3
+  description: "创建用户-重复邮箱（已存在）"
+  method: "POST"
+  url: "/api/users"
+  headers:
+    Content-Type: "application/json"
+  request_data:
+    username: "{{generate_username:email_dup}}"
+    password: "demoData"
+    email: "test@example.com"  # 使用固定邮箱，确保重复
+    phone: "{{generate_phone}}"
+    age: "{{generate_age:30}}"
+  expected_code: 200
+  expected_response:
+    code: 1
+    msg: "邮箱已存在: test@example.com"
+
+- case_id: 4
+  description: "缺少必填字段"
+  method: "POST"
+  url: "/api/users"
+  headers:
+    Content-Type: "application/json"
+  request_data:
+    username: ""
+    password: "demoData"
+  expected_code: 400
+  expected_response:
+    code: 1
+    msg: "用户名不能为空"
